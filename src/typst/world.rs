@@ -14,7 +14,7 @@ use typst::syntax::package::PackageSpec;
 use typst::syntax::{FileId, Source};
 use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
-use typst::{Library, LibraryExt, World};
+use typst::{Library, World};
 use typst_kit::fonts::{FontSearcher, FontSlot};
 use ureq::Agent;
 use zune_inflate::DeflateDecoder;
@@ -50,12 +50,12 @@ pub struct MinimalWorld {
 }
 
 impl MinimalWorld {
-    pub fn new(root: String, source: String) -> Self {
-        let root = PathBuf::from(root);
+    pub fn new(root: impl Into<String>, source: impl Into<String>, lib: Library) -> Self {
+        let root = PathBuf::from(root.into());
         let fonts = FontSearcher::new().include_system_fonts(true).search();
 
         Self {
-            library: LazyHash::new(Library::default()),
+            library: LazyHash::new(lib),
             book: LazyHash::new(fonts.book),
             root,
             fonts: fonts.fonts,

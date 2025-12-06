@@ -31,7 +31,9 @@
           cargo = toolchain;
           rustc = toolchain;
         };
-        buildInputs = with pkgs; [];
+        buildInputs = with pkgs; [
+          diesel-cli
+        ];
         nativeBuildInputs = with pkgs; [
           toolchain
           pkg-config
@@ -40,6 +42,7 @@
           cargo-public-api
           rust-analyzer-nightly
           openssl
+          sqlite
         ] ++ buildInputs;
       in with pkgs; rec
       {
@@ -48,7 +51,10 @@
 
           LD_LIBRARY_PATH = nixpkgs.lib.makeLibraryPath [
             pkgs.openssl
+            pkgs.sqlite
           ];
+
+          DATABASE_URL = "/home/inferno214221/projects/owned/invoice-generator/main.sqlite";
         };
       }
     );

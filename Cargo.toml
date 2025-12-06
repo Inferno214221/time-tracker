@@ -4,15 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-typst = "0.14.1"
+chrono = "0.4.42"
 comemo = "0.4"
-zune-inflate = { version = "0.2", default-features = false, features = [
-  "gzip",
-  "std",
+derive_more = { version = "2.0.0", features = ["debug", "display"] }
+diesel = { version = "2.2.0", features = [
+    "sqlite",
+    "returning_clauses_for_sqlite_3_35",
+    "chrono"
 ] }
 tar = "0.4"
-ureq = "2.9"
 time = "0.3"
 ttf-parser = "0.25"
+typst = "0.14.1"
 typst-kit = { version = "0.14.1", features = ["embed-fonts"] }
 typst-pdf = "0.14.1"
+ureq = "2.9"
+zune-inflate = { version = "0.2", default-features = false, features = ["gzip", "std"] }
