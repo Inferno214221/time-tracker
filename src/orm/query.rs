@@ -1,10 +1,10 @@
 use std::collections::BTreeSet;
 
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::query_dsl::methods::LoadQuery;
 
-use crate::orm::model::{InvoiceActivity, Ticket, TicketTime, Time};
+use crate::orm::model::{Invoice, InvoiceActivity, Recipient, Ticket, TicketTime, Time};
 use super::schema;
 
 #[derive(Debug, Identifiable, Associations)]
@@ -32,7 +32,9 @@ impl From<(Vec<TicketTime>, Time)> for TimeWithTickets {
             time_desc: time.time_desc,
             time_dur: time.time_dur,
             act_num: time.act_num,
-            tickets: tickets.into_iter().map(|t| t.into()).collect(),
+            tickets: tickets.into_iter()
+                .map(Ticket::from)
+                .collect(),
         }
     }
 }
@@ -57,11 +59,36 @@ impl TimeWithTickets {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Identifiable, Associations)]
+#[diesel(belongs_to(Invoice, foreign_key = inv_num))]
+#[diesel(table_name = schema::invoice)]
+#[diesel(primary_key(act_num))]
+#[diesel(check_for_backend(Sqlite))]
 pub struct ActivityWithTickets {
-    pub activity: InvoiceActivity,
+    pub act_num: i32,
+    pub inv_num: i32,
+    pub act_desc: String,
+    pub act_uprice: f64,
+    pub act_dur: f64,
     pub tickets: BTreeSet<Ticket>,
-    pub duration: f64,
+}
+
+impl From<(Vec<TimeWithTickets>, InvoiceActivity)> for ActivityWithTickets {
+    fn from(value: (Vec<TimeWithTickets>, InvoiceActivity)) -> Self {
+        let (time_with_tickets, activity) = value;
+        ActivityWithTickets {
+            act_num: activity.act_num,
+            inv_num: activity.inv_num,
+            act_desc: activity.act_desc,
+            act_uprice: activity.act_uprice,
+            act_dur: time_with_tickets.iter()
+                .flat_map(|t| t.time_dur)
+                .sum(),
+            tickets: time_with_tickets.into_iter()
+                .flat_map(|t| t.tickets)
+                .collect()
+        }
+    }
 }
 
 impl ActivityWithTickets {
@@ -73,29 +100,64 @@ impl ActivityWithTickets {
     {
         let all_activites = query.load(conn)?;
 
-        let all_times: Vec<Time> = Time::belonging_to(&all_activites)
-            .load(conn)?;
-
-        let all_tickets: Vec<TicketTime> = TicketTime::belonging_to(&all_times)
-            .load(conn)?;
-
-        let times_with_tickets: Vec<TimeWithTickets> = all_tickets.grouped_by(&all_times)
-            .into_iter()
-            .zip(all_times)
-            .map(TimeWithTickets::from)
-            .collect();
+        let times_with_tickets = TimeWithTickets::from_query(
+            Time::belonging_to(&all_activites),
+            conn
+        )?;
 
         Ok(times_with_tickets.grouped_by(&all_activites)
             .into_iter()
             .zip(all_activites)
-            .map(|(time_with_tickets, activity)| ActivityWithTickets {
-                activity,
-                duration: time_with_tickets.iter()
-                    .flat_map(|t| t.time_dur)
-                    .sum(),
-                tickets: time_with_tickets.into_iter()
-                    .flat_map(|t| t.tickets)
-                    .collect()
-            }).collect())
+            .map(ActivityWithTickets::from)
+            .collect())
+    }
+}
+
+#[derive(Debug)]
+pub struct InvoiceWithActivities {
+    pub inv_num: i32,
+    pub inv_month: NaiveDate,
+    pub inv_created: Option<NaiveDate>,
+    pub recipient: Recipient,
+    pub activities: Vec<ActivityWithTickets>,
+}
+
+impl From<(Vec<ActivityWithTickets>, Invoice, Recipient)> for InvoiceWithActivities {
+    fn from(value: (Vec<ActivityWithTickets>, Invoice, Recipient)) -> Self {
+        let (mut activities, invoice, recipient) = value;
+        activities.sort_by_key(|a| a.act_num);
+        InvoiceWithActivities {
+            inv_num: invoice.inv_num,
+            inv_month: invoice.inv_month,
+            inv_created: invoice.inv_created,
+            recipient,
+            activities,
+        }
+    }
+}
+
+impl InvoiceWithActivities {
+    pub fn from_query<'q, Q>(
+        query: Q,
+        conn: &mut SqliteConnection
+    ) -> QueryResult<Vec<InvoiceWithActivities>> where
+        Q: LoadQuery<'q, SqliteConnection, (Invoice, Recipient)>
+    {
+        let (all_invoices, recipients): (Vec<_>, Vec<_>) = query.load(conn)?
+            .into_iter()
+            .unzip();
+
+        let activities_with_tickets = ActivityWithTickets::from_query(
+            InvoiceActivity::belonging_to(&all_invoices),
+            conn
+        )?;
+
+        Ok(activities_with_tickets.grouped_by(&all_invoices)
+            .into_iter()
+            .zip(all_invoices)
+            .zip(recipients)
+            .map(|((a, b), c)| (a, b, c))
+            .map(InvoiceWithActivities::from)
+            .collect())
     }
 }
