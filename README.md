@@ -10,3 +10,4 @@ This tool is pretty specific to my own workflow and time tracking format, but I'
 - ORM using `diesel`
 - Invoice generation using `typst`
   - (Usage is heavily based on [`typst-as-library`](https://github.com/tfachmann/typst-as-library))
+- Timesheet generation using `csv`
