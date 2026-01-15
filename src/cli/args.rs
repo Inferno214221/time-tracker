@@ -1,7 +1,7 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, sync::LazyLock};
 
 use chrono::{NaiveDate, NaiveTime, TimeDelta};
-use clap::{Parser, Subcommand, builder::styling::Styles};
+use clap::{Args, Parser, Subcommand, builder::styling::Styles};
 use ctreg::regex;
 
 pub const CARGO_STYLES: Styles = {
@@ -19,7 +19,7 @@ pub const CARGO_STYLES: Styles = {
 
 #[derive(Debug, Parser)]
 #[command(version, about, styles = CARGO_STYLES)]
-pub struct Args {
+pub struct CliArgs {
     #[command(subcommand)]
     pub action: Action,
 
@@ -30,31 +30,35 @@ pub struct Args {
 #[derive(Debug, Subcommand)]
 pub enum Action {
     #[command(visible_alias = "gen")]
-    Generate {
-        #[command(subcommand)]
-        doc_type: DocType,
+    Generate(GenerateArgs),
+    Log(LogArgs),
+    Amend,
+}
 
-        #[arg(global = true, value_parser = DocIdentifier::from_str)]
-        ident: Option<DocIdentifier>,
+#[derive(Debug, Args)]
+pub struct GenerateArgs {
+    #[command(subcommand)]
+    pub doc_type: DocType,
 
-        #[arg(long, short, global = true)]
-        output: Option<PathBuf>,
-    },
-    Log {
-        #[arg(long, short, value_parser = parse_date)]
-        date: Option<NaiveDate>,
+    #[arg(global = true, value_parser = DocIdentifier::from_str)]
+    pub ident: Option<DocIdentifier>,
 
-        #[arg(value_parser = TimeRange::from_str)]
-        time_range: TimeRange,
+    #[arg(long, short, global = true)]
+    pub output: Option<PathBuf>,
+}
 
-        description: String,
+#[derive(Debug, Args)]
+pub struct LogArgs {
+    #[arg(long, short, value_parser = parse_date)]
+    pub date: Option<NaiveDate>,
 
-        #[arg(trailing_var_arg = true)]
-        tickets: Vec<String>,
-    },
-    Amend {
-        // TODO
-    },
+    #[arg(value_parser = TimeRange::from_str)]
+    pub time_range: TimeRange,
+
+    pub description: String,
+
+    #[arg(trailing_var_arg = true)]
+    pub tickets: Vec<String>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -93,16 +97,15 @@ impl FromStr for DocIdentifier {
 
 #[derive(Debug, Clone)]
 pub struct TimeRange {
-    start: NaiveTime,
-    end: NaiveTime
+    pub start: NaiveTime,
+    pub end: NaiveTime
 }
 
 impl FromStr for TimeRange {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let pattern = TimeRangePattern::new();
-        let groups = pattern.captures(s).ok_or("value doesn't match time range format")?;
+        let groups = TIME_RANGE_PATTERN.captures(s).ok_or("value doesn't match time range format")?;
 
         let primary = NaiveTime::from_hms_opt(
             groups.hours.content.parse().unwrap(),
@@ -129,3 +132,5 @@ impl FromStr for TimeRange {
 }
 
 regex! { pub TimeRangePattern = r"^(?<hours>\d{1,2})(:(?<mins>\d{2}))?(?<op>[+-])(?<dur>\d{1,2}(\.\d)?)$" }
+
+static TIME_RANGE_PATTERN: LazyLock<TimeRangePattern> = LazyLock::new(TimeRangePattern::new);

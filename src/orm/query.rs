@@ -23,8 +23,7 @@ pub struct TimeWithTickets {
 }
 
 impl From<(Vec<TicketTime>, Time)> for TimeWithTickets {
-    fn from(value: (Vec<TicketTime>, Time)) -> Self {
-        let (tickets, time) = value;
+    fn from((tickets, time): (Vec<TicketTime>, Time)) -> Self {
         TimeWithTickets {
             time_id: time.time_id,
             time_start: time.time_start,
@@ -74,8 +73,7 @@ pub struct ActivityWithTickets {
 }
 
 impl From<(Vec<TimeWithTickets>, InvoiceActivity)> for ActivityWithTickets {
-    fn from(value: (Vec<TimeWithTickets>, InvoiceActivity)) -> Self {
-        let (time_with_tickets, activity) = value;
+    fn from((time_with_tickets, activity): (Vec<TimeWithTickets>, InvoiceActivity)) -> Self {
         ActivityWithTickets {
             act_num: activity.act_num,
             inv_num: activity.inv_num,
@@ -123,8 +121,15 @@ pub struct InvoiceWithActivities {
 }
 
 impl From<(Vec<ActivityWithTickets>, Invoice, Recipient)> for InvoiceWithActivities {
-    fn from(value: (Vec<ActivityWithTickets>, Invoice, Recipient)) -> Self {
-        let (mut activities, invoice, recipient) = value;
+    fn from((
+        mut activities,
+        invoice,
+        recipient
+    ): (
+        Vec<ActivityWithTickets>,
+        Invoice,
+        Recipient
+    )) -> Self {
         activities.sort_by_key(|a| a.act_num);
         InvoiceWithActivities {
             inv_num: invoice.inv_num,

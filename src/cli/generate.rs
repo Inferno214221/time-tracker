@@ -6,25 +6,21 @@ use diesel::prelude::*;
 use typst::{Library, LibraryExt};
 use typst_pdf::PdfOptions;
 
-use crate::cli::args::{DocIdentifier, DocType};
+use crate::cli::args::{DocIdentifier, DocType, GenerateArgs};
 use crate::csv::convert::CsvTime;
 use crate::orm::model::Time;
 use crate::orm::query::TimeWithTickets;
 use crate::orm::{model::{Invoice, Recipient}, query::InvoiceWithActivities};
 use crate::typst::{convert::IntoTypst, world::MinimalWorld};
 
-pub fn generate(
-    conn: &mut SqliteConnection,
-    doc_type: DocType,
-    ident: Option<DocIdentifier>,
-    output: Option<PathBuf>
-) {
-    let ident = ident.unwrap_or_else(|| DocIdentifier::Month(
+pub fn generate(conn: &mut SqliteConnection, args: GenerateArgs) {
+    let ident = args.ident.unwrap_or_else(|| DocIdentifier::Month(
         Local::now().date_naive()
     ));
-    match doc_type {
-        DocType::Invoice => generate_invoice(conn, ident, output),
-        DocType::Timesheet => generate_timesheet(conn, ident, output),
+
+    match args.doc_type {
+        DocType::Invoice => generate_invoice(conn, ident, args.output),
+        DocType::Timesheet => generate_timesheet(conn, ident, args.output),
     }
 }
 
@@ -55,9 +51,6 @@ pub fn generate_invoice(
     let Ok([invoice]) = <[InvoiceWithActivities; 1]>::try_from(invoices) else {
         panic!("Identifier failed to uniquely identify an invoice");
     };
-
-    // TODO: inv_created.unwrap_or_else(|| Local::now().date_naive()) should probably occur
-    // somewhere here.
 
     let output = output.unwrap_or_else(
         || format!(
@@ -126,7 +119,8 @@ pub fn generate_timesheet(
     let mut writer = WriterBuilder::new()
         .quote_style(QuoteStyle::Always)
         .has_headers(false)
-        .from_writer(Vec::new());
+        .from_path(&output)
+        .unwrap_or_else(|_| panic!("Error opening file {}", output.display()));
 
     // Just manually write the headers so that they are pretty.
     writer.write_record(["Start", "End", "Duration", "Tickets", "Description"])
@@ -136,10 +130,6 @@ pub fn generate_timesheet(
         writer.serialize(CsvTime::from(time))
             .expect("Error writing time entry to timesheet");
     }
-
-    writer.into_inner().ok()
-        .and_then(|inner| fs::write(&output, inner).ok())
-        .expect("Error writing CSV");
 
     println!("Created timesheet: '{}'", output.display());
 }

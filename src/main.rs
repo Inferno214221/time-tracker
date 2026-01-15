@@ -2,10 +2,10 @@ use std::env;
 
 use clap::Parser;
 use diesel::{Connection, SqliteConnection};
-use invoice_generator::cli::{args::{Action, Args}, generate};
+use invoice_generator::cli::{args::{Action, CliArgs}, generate, log};
 
 fn main() {
-    let args = Args::parse();
+    let args = CliArgs::parse();
 
     let db_url = args.database.unwrap_or_else(
         || env::var("DATABASE_URL")
@@ -16,19 +16,8 @@ fn main() {
         .unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
 
     match args.action {
-        Action::Generate {
-            doc_type,
-            ident,
-            output
-        } => generate::generate(conn, doc_type, ident, output),
-        Action::Log {
-            date,
-            time_range,
-            description,
-            tickets
-        } => todo!(),
-        Action::Amend {
-            // TODO
-        } => todo!(),
+        Action::Generate(gen_args) => generate::generate(conn, gen_args),
+        Action::Log(log_args) => log::log(conn, log_args),
+        Action::Amend => todo!(),
     }
 }
