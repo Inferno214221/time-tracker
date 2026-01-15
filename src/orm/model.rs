@@ -2,7 +2,6 @@ use chrono::{NaiveDate, NaiveDateTime};
 use derive_more::{Debug, Display};
 use diesel::prelude::*;
 use diesel::sqlite::Sqlite;
-use serde::{Serialize, Serializer};
 
 use super::schema;
 
@@ -87,23 +86,4 @@ pub struct InvoiceActivity {
     pub inv_num: i32,
     pub act_desc: String,
     pub act_uprice: f64,
-}
-
-// So diesel doesn't support composite foreign keys but luckily, the ticket table only has two
-// fields (at the moment), so we don't need to do any queries to turn a TicketTime into a Ticket.
-impl From<TicketTime> for Ticket {
-    fn from(value: TicketTime) -> Self {
-        Ticket {
-            proj_key: value.proj_key,
-            tick_num: value.tick_num
-        }
-    }
-}
-
-impl Serialize for Ticket {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer {
-        serializer.serialize_str(&self.to_string())
-    }
 }
