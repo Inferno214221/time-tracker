@@ -27,7 +27,7 @@ pub struct Ticket {
     pub tick_num: i32,
 }
 
-#[derive(Debug, HasQuery, Identifiable, Associations)]
+#[derive(Debug, HasQuery, Identifiable, Associations, Insertable)]
 #[diesel(belongs_to(Project, foreign_key = proj_key))]
 // #[diesel(belongs_to(Ticket))]
 #[diesel(belongs_to(Time, foreign_key = time_id))]
@@ -38,6 +38,16 @@ pub struct TicketTime {
     pub proj_key: String,
     pub tick_num: i32,
     pub time_id: i32,
+}
+
+impl From<(Ticket, i32)> for TicketTime {
+    fn from((ticket, time_id): (Ticket, i32)) -> Self {
+        TicketTime {
+            proj_key: ticket.proj_key,
+            tick_num: ticket.tick_num,
+            time_id
+        }
+    }
 }
 
 #[derive(Debug, HasQuery, Identifiable, Associations)]

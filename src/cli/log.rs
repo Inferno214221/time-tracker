@@ -1,12 +1,12 @@
-use std::str::FromStr;
+use std::{iter, str::FromStr};
 
 use chrono::Local;
-use diesel::prelude::*;
+use diesel::{insert_into, prelude::*};
 
-use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::Ticket}};
+use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::{Ticket, TicketTime}}};
 
 pub fn log(conn: &mut SqliteConnection, args: LogArgs) {
-    use crate::orm::schema::time;
+    use crate::orm::schema::{ticket_time, time};
 
     let date = args.date.unwrap_or_else(|| Local::now().date_naive());
 
@@ -19,11 +19,18 @@ pub fn log(conn: &mut SqliteConnection, args: LogArgs) {
     let id: i32 = log.insert_into(time::table)
         .returning(time::time_id)
         .get_result(conn)
-        .unwrap();
+        .expect("Error inserting time into database");
 
-    // TODO: Insert tickets as required.
+    // TODO: Scratch that, remove the ticket table entirely.
 
-    let tickets: Vec<Ticket> = args.tickets.iter()
+    let tickets: Vec<TicketTime> = args.tickets.iter()
         .map(|s| Ticket::from_str(s).unwrap_or_else(|e| panic!("{e}")))
+        .zip(iter::repeat(id))
+        .map(TicketTime::from)
         .collect();
+
+    insert_into(ticket_time::table)
+        .values(tickets)
+        .execute(conn)
+        .expect("Error inserting time into database");
 }
