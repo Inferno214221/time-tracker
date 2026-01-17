@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::{fs, path::PathBuf};
 
 use chrono::{Datelike, Local};
@@ -13,7 +14,7 @@ use crate::orm::query::TimeWithTickets;
 use crate::orm::{model::{Invoice, Recipient}, query::InvoiceWithActivities};
 use crate::typst::{convert::IntoTypst, world::MinimalWorld};
 
-pub fn generate(conn: &mut SqliteConnection, args: GenerateArgs) {
+pub fn generate(conn: &mut SqliteConnection, args: GenerateArgs) -> Result<(), Box<dyn Error>> {
     let ident = args.ident.unwrap_or_else(|| DocIdentifier::Month(
         Local::now().date_naive()
     ));
@@ -28,7 +29,7 @@ pub fn generate_invoice(
     conn: &mut SqliteConnection,
     ident: DocIdentifier,
     output: Option<PathBuf>
-) {
+) -> Result<(), Box<dyn Error>> {
     use crate::orm::schema::{invoice, recipient};
 
     let invoices = match ident {
@@ -46,10 +47,10 @@ pub fn generate_invoice(
                 .select((Invoice::as_select(), Recipient::as_select())),
             conn
         ),
-    }.expect("Error retrieving invoice from database");
+    }.or(Err("Error retrieving invoice from database"))?;
 
     let Ok([invoice]) = <[InvoiceWithActivities; 1]>::try_from(invoices) else {
-        panic!("Identifier failed to uniquely identify an invoice");
+        return Err("Identifier failed to uniquely identify an invoice".into());
     };
 
     let output = output.unwrap_or_else(
@@ -69,22 +70,24 @@ pub fn generate_invoice(
 
     let document = typst::compile(&world)
         .output
-        .expect("Error compiling typst template");
+        .or(Err("Error compiling typst template"))?;
 
     let pdf = typst_pdf::pdf(&document, &PdfOptions::default())
-        .expect("Error exporting PDF");
+        .or(Err("Error exporting PDF"))?;
 
     fs::write(&output, pdf)
-        .expect("Error writing PDF");
+        .or(Err("Error writing PDF"))?;
 
     println!("Created invoice: '{}'", output.display());
+
+    Ok(())
 }
 
 pub fn generate_timesheet(
     conn: &mut SqliteConnection,
     ident: DocIdentifier,
     output: Option<PathBuf>
-) {
+) -> Result<(), Box<dyn Error>> {
     use crate::orm::schema::{invoice, invoice_activity};
 
     let invoices = match ident {
@@ -94,10 +97,10 @@ pub fn generate_timesheet(
         DocIdentifier::Month(m) => Invoice::query()
             .filter(invoice::inv_month.eq(m))
             .load(conn),
-    }.expect("Error retrieving timesheet from database");
+    }.or(Err("Error retrieving timesheet from database"))?;
 
     let Ok([invoice]) = <[Invoice; 1]>::try_from(invoices) else {
-        panic!("Identifier failed to uniquely identify an timesheet");
+        return Err("Identifier failed to uniquely identify an timesheet".into());
     };
 
     let times = TimeWithTickets::from_query(
@@ -105,7 +108,7 @@ pub fn generate_timesheet(
             .inner_join(invoice_activity::table)
             .filter(invoice_activity::inv_num.eq(invoice.inv_num)),
         conn
-    ).expect("Error retrieving timesheet from database");
+    ).or(Err("Error retrieving timesheet from database"))?;
 
     let output = output.unwrap_or_else(
         || format!(
@@ -124,12 +127,14 @@ pub fn generate_timesheet(
 
     // Just manually write the headers so that they are pretty.
     writer.write_record(["Start", "End", "Duration", "Tickets", "Description"])
-        .expect("Error writing time entry to timesheet");
+        .or(Err("Error writing time entry to timesheet"))?;
 
     for time in times {
         writer.serialize(CsvTime::from(time))
-            .expect("Error writing time entry to timesheet");
+            .or(Err("Error writing time entry to timesheet"))?;
     }
 
     println!("Created timesheet: '{}'", output.display());
+
+    Ok(())
 }

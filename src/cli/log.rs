@@ -1,14 +1,16 @@
-use std::{iter, str::FromStr};
+use std::{error::Error, iter, str::FromStr};
 
 use chrono::Local;
 use diesel::{insert_into, prelude::*};
 
 use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::{Ticket, TicketTime}}};
 
-pub fn log(conn: &mut SqliteConnection, args: LogArgs) {
+pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> Result<(), Box<dyn Error>> {
     use crate::orm::schema::{ticket_time, time};
 
     let date = args.date.unwrap_or_else(|| Local::now().date_naive());
+
+    // FIXME: Needs an activity association.
 
     let log = LoggedTime {
         time_start: date.and_time(args.time_range.start),
@@ -19,7 +21,7 @@ pub fn log(conn: &mut SqliteConnection, args: LogArgs) {
     let id: i32 = log.insert_into(time::table)
         .returning(time::time_id)
         .get_result(conn)
-        .expect("Error inserting time into database");
+        .or(Err("Error inserting time into database"))?;
 
     // TODO: Scratch that, remove the ticket table entirely.
 
@@ -32,5 +34,9 @@ pub fn log(conn: &mut SqliteConnection, args: LogArgs) {
     insert_into(ticket_time::table)
         .values(tickets)
         .execute(conn)
-        .expect("Error inserting time into database");
+        .or(Err("Error inserting ticket-time relations into database"))?;
+
+    println!("Time logged successfully");
+
+    Ok(())
 }
