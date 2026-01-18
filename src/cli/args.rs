@@ -17,6 +17,8 @@ pub const CARGO_STYLES: Styles = {
         .invalid(INVALID)
 };
 
+// TODO: Write documentation about cli interface
+
 #[derive(Debug, Parser)]
 #[command(version, about, styles = CARGO_STYLES)]
 pub struct CliArgs {
@@ -59,6 +61,9 @@ pub struct LogArgs {
 
     #[arg(trailing_var_arg = true)]
     pub tickets: Vec<String>,
+
+    #[arg(long, short)]
+    pub activity: Option<i32>,
 }
 
 #[derive(Debug, Subcommand)]

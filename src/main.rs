@@ -1,7 +1,7 @@
 use std::{env, error::Error};
 
 use clap::Parser;
-use diesel::{Connection, SqliteConnection};
+use diesel::{Connection, RunQueryDsl, SqliteConnection, sql_query};
 use invoice_generator::cli::{args::{Action, CliArgs}, generate, log};
 
 fn main() {
@@ -14,6 +14,11 @@ fn main() {
 
     let conn = &mut SqliteConnection::establish(&db_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
+
+    // Need to enable foreign key checks for the session every time.
+    sql_query("PRAGMA foreign_keys = ON")
+        .execute(conn)
+        .expect("Unable to enable foreign keys for database session");
 
     conn.transaction::<(), Box<dyn Error>, _>(|conn| match args.action {
         Action::Generate(gen_args) => generate::generate(conn, gen_args),
