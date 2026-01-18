@@ -10,13 +10,13 @@ pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> Result<(), Box<dyn Err
 
     let date = args.date.unwrap_or_else(|| Local::now().date_naive());
 
-    let act_num = args.activity.or_else(
-        || InvoiceActivity::query()
+    let act_num = match args.activity {
+        Some(id) => Ok(id),
+        None => InvoiceActivity::query()
             .order_by(invoice_activity::act_num.desc())
             .get_result(conn)
-            .map(|a| a.act_num)
-            .ok()
-    ).ok_or("Error retrieving most recent activity")?;
+            .map(|a| a.act_num),
+    }.map_err(|e| format!("Error retrieving most recent activity:\n{e}"))?;
 
     let log = LoggedTime {
         time_start: date.and_time(args.time_range.start),
@@ -28,7 +28,7 @@ pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> Result<(), Box<dyn Err
     let id: i32 = log.insert_into(time::table)
         .returning(time::time_id)
         .get_result(conn)
-        .or(Err("Error inserting time into database"))?;
+        .map_err(|e| format!("Error inserting time into database:\n{e}"))?;
 
     let tickets: Vec<TicketTime> = args.tickets.iter()
         .map(|s| Ticket::from_str(s).unwrap_or_else(|e| panic!("{e}")))
@@ -39,7 +39,7 @@ pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> Result<(), Box<dyn Err
     insert_into(ticket_time::table)
         .values(tickets)
         .execute(conn)
-        .or(Err("Error inserting ticket-time relations into database"))?;
+        .map_err(|e| format!("Error inserting ticket-time relations into database:\n{e}"))?;
 
     println!("Time logged successfully");
 

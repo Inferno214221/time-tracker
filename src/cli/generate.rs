@@ -12,6 +12,7 @@ use crate::csv::convert::CsvTime;
 use crate::orm::model::Time;
 use crate::orm::query::TimeWithTickets;
 use crate::orm::{model::{Invoice, Recipient}, query::InvoiceWithActivities};
+use crate::typst::error::DisplayErrors;
 use crate::typst::{convert::IntoTypst, world::MinimalWorld};
 
 pub fn generate(conn: &mut SqliteConnection, args: GenerateArgs) -> Result<(), Box<dyn Error>> {
@@ -47,7 +48,7 @@ pub fn generate_invoice(
                 .select((Invoice::as_select(), Recipient::as_select())),
             conn
         ),
-    }.or(Err("Error retrieving invoice from database"))?;
+    }.map_err(|e| format!("Error retrieving invoice from database:\n{e}"))?;
 
     let Ok([invoice]) = <[InvoiceWithActivities; 1]>::try_from(invoices) else {
         return Err("Identifier failed to uniquely identify an invoice".into());
@@ -70,13 +71,13 @@ pub fn generate_invoice(
 
     let document = typst::compile(&world)
         .output
-        .or(Err("Error compiling typst template"))?;
+        .map_err(|e| format!("Error compiling typst template:{}", DisplayErrors(e)))?;
 
     let pdf = typst_pdf::pdf(&document, &PdfOptions::default())
-        .or(Err("Error exporting PDF"))?;
+        .map_err(|e| format!("Error exporting PDF:{}", DisplayErrors(e)))?;
 
     fs::write(&output, pdf)
-        .or(Err("Error writing PDF"))?;
+        .map_err(|e| format!("Error writing PDF:\n{e}"))?;
 
     println!("Created invoice: '{}'", output.display());
 
@@ -97,7 +98,7 @@ pub fn generate_timesheet(
         DocIdentifier::Month(m) => Invoice::query()
             .filter(invoice::inv_month.eq(m))
             .load(conn),
-    }.or(Err("Error retrieving timesheet from database"))?;
+    }.map_err(|e| format!("Error retrieving invoice from database:\n{e}"))?;
 
     let Ok([invoice]) = <[Invoice; 1]>::try_from(invoices) else {
         return Err("Identifier failed to uniquely identify an timesheet".into());
@@ -108,7 +109,7 @@ pub fn generate_timesheet(
             .inner_join(invoice_activity::table)
             .filter(invoice_activity::inv_num.eq(invoice.inv_num)),
         conn
-    ).or(Err("Error retrieving timesheet from database"))?;
+    ).map_err(|e| format!("Error retrieving timesheet from database:\n{e}"))?;
 
     let output = output.unwrap_or_else(
         || format!(
@@ -123,15 +124,15 @@ pub fn generate_timesheet(
         .quote_style(QuoteStyle::Always)
         .has_headers(false)
         .from_path(&output)
-        .unwrap_or_else(|_| panic!("Error opening file {}", output.display()));
+        .map_err(|e| format!("Error opening file {}:\n{e}", output.display()))?;
 
     // Just manually write the headers so that they are pretty.
     writer.write_record(["Start", "End", "Duration", "Tickets", "Description"])
-        .or(Err("Error writing time entry to timesheet"))?;
+        .map_err(|e| format!("Error writing time entry to timesheet:\n{e}"))?;
 
     for time in times {
         writer.serialize(CsvTime::from(time))
-            .or(Err("Error writing time entry to timesheet"))?;
+            .map_err(|e| format!("Error writing time entry to timesheet:\n{e}"))?;
     }
 
     println!("Created timesheet: '{}'", output.display());
