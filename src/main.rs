@@ -2,7 +2,7 @@ use std::{env, error::Error};
 
 use clap::Parser;
 use diesel::{Connection, RunQueryDsl, SqliteConnection, sql_query};
-use invoice_generator::cli::{args::{Action, CliArgs}, generate, log};
+use time_tracker::cli::{args::{Action, CliArgs}, generate, log};
 
 fn main() {
     let args = CliArgs::parse();

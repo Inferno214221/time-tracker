@@ -1,4 +1,4 @@
-# Invoice Generator (Rename Pending)
+# Time Tracker
 
 A CLI tool to log time and generate invoices / timesheets for software development.
 

@@ -1,5 +1,5 @@
 {
-  description = "Invoice Generator";
+  description = "Time Tracker";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-25.11";
