@@ -1,12 +1,11 @@
-use std::{str::FromStr, sync::LazyLock};
+use std::str::FromStr;
 
-use ctreg::regex;
 use derive_more::{Debug, Display};
 use serde::{Serialize, Serializer};
 
-use crate::orm::model::TicketTime;
+use crate::{cli::patterns::{TICKET_PATTERN, TicketPatternCaptures}, orm::model::TicketTime};
 
-#[derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Clone)]
 #[debug("\"{proj_key}-{tick_num}\"")]
 #[display("{proj_key}-{tick_num}")]
 pub struct Ticket {
@@ -33,19 +32,23 @@ impl Serialize for Ticket {
     }
 }
 
-impl FromStr for Ticket {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let groups = TICKET_PATTERN.captures(s).ok_or("string doesn't match ticket format")?;
-
+impl Ticket {
+    pub fn try_from_match(groups: TicketPatternCaptures<'_>) -> Result<Ticket, String> {
         Ok(Ticket {
             proj_key: groups.proj_key.content.to_owned(),
-            tick_num: groups.tick_num.content.parse().unwrap(),
+            tick_num: groups.tick_num.content.parse()
+                .map_err(|e| format!("Error parsing ticket number:\n{e}"))?,
         })
     }
 }
 
-regex! { pub TicketPattern = r"(?<proj_key>\w+)-(?<tick_num>\d+)" }
+impl FromStr for Ticket {
+    type Err = String;
 
-static TICKET_PATTERN: LazyLock<TicketPattern> = LazyLock::new(TicketPattern::new);
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let groups = TICKET_PATTERN.captures(s)
+            .ok_or("String doesn't match ticket format")?;
+
+        Ticket::try_from_match(groups)
+    }
+}

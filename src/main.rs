@@ -23,6 +23,7 @@ fn main() {
     conn.transaction::<(), Box<dyn Error>, _>(|conn| match args.action {
         Action::Generate(gen_args) => generate::generate(conn, gen_args),
         Action::Log(log_args) => log::log(conn, log_args),
-        Action::Amend => todo!(),
+        Action::Amend(_) => todo!(),
+        Action::List => todo!(),
     }).unwrap_or_else(|e| panic!("{e}"));
 }
