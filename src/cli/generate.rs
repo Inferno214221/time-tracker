@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::{fs, path::PathBuf};
 
-use chrono::{Datelike, Local};
+use chrono::{Datelike, Local, NaiveDate};
 use csv::{QuoteStyle, WriterBuilder};
 use diesel::prelude::*;
 use typst::{Library, LibraryExt};
@@ -16,8 +16,10 @@ use crate::typst::error::DisplayErrors;
 use crate::typst::{convert::IntoTypst, world::MinimalWorld};
 
 pub fn generate(conn: &mut SqliteConnection, args: GenerateArgs) -> Result<(), Box<dyn Error>> {
+    let now = Local::now().date_naive();
     let ident = args.ident.unwrap_or_else(|| DocIdentifier::Month(
-        Local::now().date_naive()
+        NaiveDate::from_ymd_opt(now.year(), now.month(), 1)
+            .expect("Failed to reconstruct date from parts")
     ));
 
     match args.doc_type {
