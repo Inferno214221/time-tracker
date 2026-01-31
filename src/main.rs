@@ -2,7 +2,7 @@ use std::{env, error::Error};
 
 use clap::Parser;
 use diesel::{Connection, RunQueryDsl, SqliteConnection, sql_query};
-use time_tracker::cli::{args::{Action, CliArgs}, generate, log};
+use time_tracker::cli::{args::{Action, CliArgs}, generate, list, log};
 
 fn main() {
     let args = CliArgs::parse();
@@ -24,6 +24,6 @@ fn main() {
         Action::Generate(gen_args) => generate::generate(conn, gen_args),
         Action::Log(log_args) => log::log(conn, log_args),
         Action::Amend(_) => todo!(),
-        Action::List => todo!(),
+        Action::List(list_args) => list::list(conn, list_args),
     }).unwrap_or_else(|e| panic!("{e}"));
 }

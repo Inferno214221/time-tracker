@@ -133,7 +133,7 @@ impl MinimalWorld {
             return Ok(path);
         }
 
-        eprintln!("downloading {package}");
+        eprintln!("Downloading {package}");
         let url = format!(
             "https://packages.typst.org/{}/{}-{}.tar.gz",
             package.namespace, package.name, package.version,

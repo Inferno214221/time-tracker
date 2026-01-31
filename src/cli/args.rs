@@ -37,7 +37,7 @@ pub enum Action {
     Log(LogArgs),
     Amend(AmendArgs),
     #[command(visible_alias = "ls")]
-    List,
+    List(ListArgs),
 }
 
 #[derive(Debug, Args)]
@@ -60,54 +60,6 @@ pub enum DocType {
     Timesheet,
 }
 
-#[derive(Debug, Args)]
-pub struct LogArgs {
-    #[arg(long, short, value_parser = parse_date)]
-    pub date: Option<NaiveDate>,
-
-    #[arg(long, short)]
-    pub activity: Option<i32>,
-
-    #[arg(value_parser = TimeRange::from_str)]
-    pub time_range: TimeRange,
-
-    pub description: String,
-
-    // TODO: Try changing to Ticket.
-    #[arg(trailing_var_arg = true)]
-    pub tickets: Vec<String>,
-}
-
-#[derive(Debug, Args)]
-pub struct AmendArgs {
-    // TODO: Need a method of showing the ids without manual access.
-    #[arg(long, short)]
-    pub time_id: Option<i32>,
-
-    #[arg(long, short)]
-    pub delete: bool,
-
-    #[arg(value_parser = TimeProperty::from_str, trailing_var_arg = true)]
-    pub property: Vec<TimeProperty>,
-}
-
-#[derive(Debug, Clone)]
-pub enum TimeProperty {
-    Date(NaiveDate),
-    Time(TimeRange),
-    Activity(i32),
-    Ticket(Ticket),
-    Desc(String),
-}
-
-pub fn parse_month(input: &str) -> Result<NaiveDate, chrono::ParseError> {
-    parse_date(&(input.to_owned() + "-01"))
-}
-
-pub fn parse_date(input: &str) -> Result<NaiveDate, chrono::ParseError> {
-    NaiveDate::parse_from_str(input, "%Y-%m-%d")
-}
-
 #[derive(Debug, Clone)]
 pub enum DocIdentifier {
     Num(i32),
@@ -126,6 +78,24 @@ impl FromStr for DocIdentifier {
             Err("Value doesn't match format of numeric id or month".into())
         }
     }
+}
+
+#[derive(Debug, Args)]
+pub struct LogArgs {
+    #[arg(long, short, value_parser = parse_date)]
+    pub date: Option<NaiveDate>,
+
+    #[arg(long, short)]
+    pub activity: Option<i32>,
+
+    #[arg(value_parser = TimeRange::from_str)]
+    pub time_range: TimeRange,
+
+    pub description: String,
+
+    // TODO: Try changing to Ticket.
+    #[arg(trailing_var_arg = true)]
+    pub tickets: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -171,6 +141,36 @@ impl FromStr for TimeRange {
     }
 }
 
+#[derive(Debug, Args)]
+pub struct AmendArgs {
+    // TODO: Need a method of showing the ids without manual access.
+    #[arg(long, short)]
+    pub time_id: Option<i32>,
+
+    #[arg(long, short)]
+    pub delete: bool,
+
+    #[arg(value_parser = TimeProperty::from_str, trailing_var_arg = true)]
+    pub property: Vec<TimeProperty>,
+}
+
+#[derive(Debug, Clone)]
+pub enum TimeProperty {
+    Date(NaiveDate),
+    Time(TimeRange),
+    Activity(i32),
+    Ticket(Ticket),
+    Desc(String),
+}
+
+pub fn parse_month(input: &str) -> Result<NaiveDate, chrono::ParseError> {
+    parse_date(&(input.to_owned() + "-01"))
+}
+
+pub fn parse_date(input: &str) -> Result<NaiveDate, chrono::ParseError> {
+    NaiveDate::parse_from_str(input, "%Y-%m-%d")
+}
+
 // TODO: Test that this actually works.
 
 impl FromStr for TimeProperty {
@@ -202,4 +202,19 @@ impl FromStr for TimeProperty {
             TimeProperty::Desc(s.to_owned())
         })
     }
+}
+
+#[derive(Debug, Args)]
+pub struct ListArgs {
+    #[command(subcommand)]
+    pub entry_type: EntryType,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum EntryType {
+    Time,
+    #[command(visible_alias = "act")]
+    Activity,
+    #[command(visible_alias = "inv")]
+    Invoice,
 }

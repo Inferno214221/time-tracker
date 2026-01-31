@@ -73,10 +73,10 @@ pub fn generate_invoice(
 
     let document = typst::compile(&world)
         .output
-        .map_err(|e| format!("Error compiling typst template:{}", DisplayErrors(e)))?;
+        .map_err(|e| format!("Error compiling typst template:\n{}", DisplayErrors(e)))?;
 
     let pdf = typst_pdf::pdf(&document, &PdfOptions::default())
-        .map_err(|e| format!("Error exporting PDF:{}", DisplayErrors(e)))?;
+        .map_err(|e| format!("Error exporting PDF:\n{}", DisplayErrors(e)))?;
 
     fs::write(&output, pdf)
         .map_err(|e| format!("Error writing PDF:\n{e}"))?;
