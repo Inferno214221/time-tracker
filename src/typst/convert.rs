@@ -1,4 +1,4 @@
-use chrono::{Datelike, Local, NaiveDate, NaiveDateTime, Timelike};
+use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike};
 use typst::foundations::{Array, Datetime, Dict, IntoValue, Str, Value};
 
 use crate::orm::{model::Recipient, query::{ActivityWithTickets, InvoiceWithActivities}, ticket::Ticket};
@@ -54,9 +54,7 @@ impl IntoTypst for InvoiceWithActivities {
         [
             (Str::from("num"), self.inv_num.into_value()),
             (Str::from("month"), self.inv_month.into_typst().into_value()),
-            (Str::from("created"), self.inv_created.unwrap_or(
-                    Local::now().date_naive()
-                )
+            (Str::from("created"), self.inv_created.unwrap_or_default()
                 .into_typst()
                 .into_value()
             ),

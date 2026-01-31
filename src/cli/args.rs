@@ -1,9 +1,9 @@
 use std::{path::PathBuf, str::FromStr};
 
-use chrono::{NaiveDate, NaiveTime, TimeDelta};
+use chrono::{NaiveTime, TimeDelta};
 use clap::{Args, Parser, Subcommand, builder::styling::Styles};
 
-use crate::{cli::patterns::{ACTIVITY_PATTERN, DATE_PATTERN, TICKET_PATTERN, TIME_RANGE_PATTERN, TimeRangePatternCaptures}, orm::ticket::Ticket};
+use crate::{cli::patterns::{ACTIVITY_PATTERN, DATE_PATTERN, TICKET_PATTERN, TIME_RANGE_PATTERN, TimeRangePatternCaptures}, orm::ticket::Ticket, util::date::{Date, Month}};
 
 pub const CARGO_STYLES: Styles = {
     use clap_cargo::style::*;
@@ -63,16 +63,22 @@ pub enum DocType {
 #[derive(Debug, Clone)]
 pub enum DocIdentifier {
     Num(i32),
-    Month(NaiveDate),
+    Month(Month),
+}
+
+impl Default for DocIdentifier {
+    fn default() -> Self {
+        DocIdentifier::Month(Month::default())
+    }
 }
 
 impl FromStr for DocIdentifier {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(num) = i32::from_str(s) {
+        if let Ok(num) = s.parse() {
             Ok(DocIdentifier::Num(num))
-        } else if let Ok(date) = parse_month(s) {
+        } else if let Ok(date) = s.parse() {
             Ok(DocIdentifier::Month(date))
         } else {
             Err("Value doesn't match format of numeric id or month".into())
@@ -82,8 +88,8 @@ impl FromStr for DocIdentifier {
 
 #[derive(Debug, Args)]
 pub struct LogArgs {
-    #[arg(long, short, value_parser = parse_date)]
-    pub date: Option<NaiveDate>,
+    #[arg(long, short, value_parser = Date::from_str)]
+    pub date: Option<Date>,
 
     #[arg(long, short)]
     pub activity: Option<i32>,
@@ -156,19 +162,11 @@ pub struct AmendArgs {
 
 #[derive(Debug, Clone)]
 pub enum TimeProperty {
-    Date(NaiveDate),
+    Date(Date),
     Time(TimeRange),
     Activity(i32),
     Ticket(Ticket),
     Desc(String),
-}
-
-pub fn parse_month(input: &str) -> Result<NaiveDate, chrono::ParseError> {
-    parse_date(&(input.to_owned() + "-01"))
-}
-
-pub fn parse_date(input: &str) -> Result<NaiveDate, chrono::ParseError> {
-    NaiveDate::parse_from_str(input, "%Y-%m-%d")
 }
 
 // TODO: Test that this actually works.
@@ -189,8 +187,7 @@ impl FromStr for TimeProperty {
             )
         } else if DATE_PATTERN.is_match(s) {
             TimeProperty::Date(
-                parse_date(s)
-                    .map_err(|e| format!("Error parsing time:\n{e}"))?
+                s.parse()?
             )
         } else if let Some(groups) = TIME_RANGE_PATTERN.captures(s) {
             TimeProperty::Time(

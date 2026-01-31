@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::{fs, path::PathBuf};
 
-use chrono::{Datelike, Local, NaiveDate};
 use csv::{QuoteStyle, WriterBuilder};
 use diesel::prelude::*;
 use typst::{Library, LibraryExt};
@@ -16,11 +15,7 @@ use crate::typst::error::DisplayErrors;
 use crate::typst::{convert::IntoTypst, world::MinimalWorld};
 
 pub fn generate(conn: &mut SqliteConnection, args: GenerateArgs) -> Result<(), Box<dyn Error>> {
-    let now = Local::now().date_naive();
-    let ident = args.ident.unwrap_or_else(|| DocIdentifier::Month(
-        NaiveDate::from_ymd_opt(now.year(), now.month(), 1)
-            .expect("Failed to reconstruct date from parts")
-    ));
+    let ident = args.ident.unwrap_or_default();
 
     match args.doc_type {
         DocType::Invoice => generate_invoice(conn, ident, args.output),
@@ -58,9 +53,8 @@ pub fn generate_invoice(
 
     let output = output.unwrap_or_else(
         || format!(
-            "./{}-{}-tax-invoice-{}.pdf",
-            invoice.inv_month.year(),
-            invoice.inv_month.month(),
+            "./{}-tax-invoice-{}.pdf",
+            invoice.inv_month,
             invoice.inv_num
         ).into()
     );
@@ -115,9 +109,8 @@ pub fn generate_timesheet(
 
     let output = output.unwrap_or_else(
         || format!(
-            "./{}-{}-timesheet-{}.csv",
-            invoice.inv_month.year(),
-            invoice.inv_month.month(),
+            "./{}-timesheet-{}.csv",
+            invoice.inv_month,
             invoice.inv_num
         ).into()
     );

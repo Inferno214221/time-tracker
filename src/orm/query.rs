@@ -1,10 +1,9 @@
 use std::collections::BTreeSet;
 
-use chrono::{NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use diesel::query_dsl::methods::LoadQuery;
 
-use crate::orm::{model::{Invoice, InvoiceActivity, Recipient, TicketTime, Time}, ticket::Ticket};
+use crate::{util::date::{Date, DateTime, Month}, orm::{model::{Invoice, InvoiceActivity, Recipient, TicketTime, Time}, ticket::Ticket}};
 use super::schema;
 
 #[derive(Debug, Identifiable, Associations)]
@@ -14,8 +13,8 @@ use super::schema;
 #[diesel(check_for_backend(Sqlite))]
 pub struct TimeWithTickets {
     pub time_id: i32,
-    pub time_start: NaiveDateTime,
-    pub time_end: NaiveDateTime,
+    pub time_start: DateTime,
+    pub time_end: DateTime,
     pub time_desc: String,
     pub time_dur: Option<f64>,
     pub act_num: Option<i32>,
@@ -114,8 +113,8 @@ impl ActivityWithTickets {
 #[derive(Debug)]
 pub struct InvoiceWithActivities {
     pub inv_num: i32,
-    pub inv_month: NaiveDate,
-    pub inv_created: Option<NaiveDate>,
+    pub inv_month: Month,
+    pub inv_created: Option<Date>,
     pub recipient: Recipient,
     pub activities: Vec<ActivityWithTickets>,
 }

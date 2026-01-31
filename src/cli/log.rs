@@ -1,6 +1,5 @@
 use std::{error::Error, iter, str::FromStr};
 
-use chrono::Local;
 use diesel::{insert_into, prelude::*};
 
 use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::{InvoiceActivity, TicketTime}, ticket::Ticket}};
@@ -8,7 +7,7 @@ use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::{InvoiceActivit
 pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> Result<(), Box<dyn Error>> {
     use crate::orm::schema::{invoice_activity, ticket_time, time};
 
-    let date = args.date.unwrap_or_else(|| Local::now().date_naive());
+    let date = args.date.unwrap_or_default();
 
     let act_num = match args.activity {
         Some(id) => Ok(id),
