@@ -1,10 +1,10 @@
-use std::{error::Error, iter, str::FromStr};
+use std::{iter, str::FromStr};
 
 use diesel::{insert_into, prelude::*};
 
-use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::{InvoiceActivity, TicketTime}, ticket::Ticket}};
+use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::{InvoiceActivity, TicketTime}, ticket::Ticket}, util::error::DynResult};
 
-pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> Result<(), Box<dyn Error>> {
+pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> DynResult<()> {
     use crate::orm::schema::{invoice_activity, ticket_time, time};
 
     let date = args.date.unwrap_or_default();

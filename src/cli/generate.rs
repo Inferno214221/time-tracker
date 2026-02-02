@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::{fs, path::PathBuf};
 
 use csv::{QuoteStyle, WriterBuilder};
@@ -10,11 +9,12 @@ use crate::cli::args::{DocIdentifier, DocType, GenerateArgs};
 use crate::csv::convert::CsvTime;
 use crate::orm::model::Time;
 use crate::orm::query::TimeWithTickets;
-use crate::orm::{model::{Invoice, Recipient}, query::InvoiceWithActivities};
+use crate::orm::{model::Invoice, query::InvoiceWithActivities};
 use crate::typst::error::DisplayErrors;
 use crate::typst::{convert::IntoTypst, world::MinimalWorld};
+use crate::util::error::DynResult;
 
-pub fn generate(conn: &mut SqliteConnection, args: GenerateArgs) -> Result<(), Box<dyn Error>> {
+pub fn generate(conn: &mut SqliteConnection, args: GenerateArgs) -> DynResult<()> {
     let ident = args.ident.unwrap_or_default();
 
     match args.doc_type {
@@ -27,29 +27,8 @@ pub fn generate_invoice(
     conn: &mut SqliteConnection,
     ident: DocIdentifier,
     output: Option<PathBuf>
-) -> Result<(), Box<dyn Error>> {
-    use crate::orm::schema::{invoice, recipient};
-
-    let invoices = match ident {
-        DocIdentifier::Num(n) => InvoiceWithActivities::from_query(
-            invoice::table
-                .inner_join(recipient::table)
-                .filter(invoice::inv_num.eq(n))
-                .select((Invoice::as_select(), Recipient::as_select())),
-            conn
-        ),
-        DocIdentifier::Month(m) => InvoiceWithActivities::from_query(
-            invoice::table
-                .inner_join(recipient::table)
-                .filter(invoice::inv_month.eq(m))
-                .select((Invoice::as_select(), Recipient::as_select())),
-            conn
-        ),
-    }.map_err(|e| format!("Error retrieving invoice from database:\n{e}"))?;
-
-    let Ok([invoice]) = <[InvoiceWithActivities; 1]>::try_from(invoices) else {
-        return Err("Identifier failed to uniquely identify an invoice".into());
-    };
+) -> DynResult<()> {
+    let invoice = InvoiceWithActivities::select_by_identifier(ident, conn)?;
 
     let output = output.unwrap_or_else(
         || format!(
@@ -84,21 +63,10 @@ pub fn generate_timesheet(
     conn: &mut SqliteConnection,
     ident: DocIdentifier,
     output: Option<PathBuf>
-) -> Result<(), Box<dyn Error>> {
-    use crate::orm::schema::{invoice, invoice_activity};
+) -> DynResult<()> {
+    use crate::orm::schema::invoice_activity;
 
-    let invoices = match ident {
-        DocIdentifier::Num(n) => Invoice::query()
-            .filter(invoice::inv_num.eq(n))
-            .load(conn),
-        DocIdentifier::Month(m) => Invoice::query()
-            .filter(invoice::inv_month.eq(m))
-            .load(conn),
-    }.map_err(|e| format!("Error retrieving invoice from database:\n{e}"))?;
-
-    let Ok([invoice]) = <[Invoice; 1]>::try_from(invoices) else {
-        return Err("Identifier failed to uniquely identify an timesheet".into());
-    };
+    let invoice = Invoice::select_by_identifier(ident, conn)?;
 
     let times = TimeWithTickets::from_query(
         Time::query()

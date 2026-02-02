@@ -1,8 +1,8 @@
-use std::{env, error::Error};
+use std::env;
 
 use clap::Parser;
 use diesel::{Connection, RunQueryDsl, SqliteConnection, sql_query};
-use time_tracker::cli::{args::{Action, CliArgs}, generate, list, log};
+use time_tracker::{cli::{args::{Action, CliArgs}, generate, list, log}, util::error::DynError};
 
 fn main() {
     let args = CliArgs::parse();
@@ -20,7 +20,7 @@ fn main() {
         .execute(conn)
         .expect("Unable to enable foreign keys for database session");
 
-    conn.transaction::<(), Box<dyn Error>, _>(|conn| match args.action {
+    conn.transaction::<(), DynError, _>(|conn| match args.action {
         Action::Generate(gen_args) => generate::generate(conn, gen_args),
         Action::Log(log_args) => log::log(conn, log_args),
         Action::Amend(_) => todo!(),

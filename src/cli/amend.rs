@@ -1,10 +1,8 @@
-use std::error::Error;
-
 use diesel::SqliteConnection;
 
-use crate::cli::args::AmendArgs;
+use crate::{cli::args::AmendArgs, util::error::DynResult};
 
-pub fn amend(conn: &mut SqliteConnection, args: AmendArgs) -> Result<(), Box<dyn Error>> {
+pub fn amend(conn: &mut SqliteConnection, args: AmendArgs) -> DynResult<()> {
     dbg!(&args);
     if args.delete {
         if !args.property.is_empty() {

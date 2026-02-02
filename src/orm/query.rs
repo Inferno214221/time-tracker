@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use diesel::prelude::*;
 use diesel::query_dsl::methods::LoadQuery;
 
-use crate::{util::date::{Date, DateTime, Month}, orm::{model::{Invoice, InvoiceActivity, Recipient, TicketTime, Time}, ticket::Ticket}};
+use crate::{cli::args::DocIdentifier, orm::{model::{Invoice, InvoiceActivity, Recipient, TicketTime, Time}, ticket::Ticket}, util::{date::{Date, DateTime, Month}, error::DynResult}};
 use super::schema;
 
 #[derive(Debug, Identifiable, Associations)]
@@ -163,5 +163,57 @@ impl InvoiceWithActivities {
             .map(|((a, b), c)| (a, b, c))
             .map(InvoiceWithActivities::from)
             .collect())
+    }
+
+    pub fn select_by_identifier(
+        ident: DocIdentifier,
+        conn: &mut SqliteConnection
+    ) -> DynResult<InvoiceWithActivities> {
+        use crate::orm::schema::{invoice, recipient};
+
+        let invoices = match ident {
+            DocIdentifier::Num(n) => InvoiceWithActivities::from_query(
+                invoice::table
+                    .inner_join(recipient::table)
+                    .filter(invoice::inv_num.eq(n))
+                    .select((Invoice::as_select(), Recipient::as_select())),
+                conn
+            ),
+            DocIdentifier::Month(m) => InvoiceWithActivities::from_query(
+                invoice::table
+                    .inner_join(recipient::table)
+                    .filter(invoice::inv_month.eq(m))
+                    .select((Invoice::as_select(), Recipient::as_select())),
+                conn
+            ),
+        }.map_err(|e| format!("Error retrieving invoice from database:\n{e}"))?;
+
+        let [invoice] = <[InvoiceWithActivities; 1]>::try_from(invoices)
+            .map_err(|_| "Identifier failed to uniquely identify an invoice")?;
+
+        Ok(invoice)
+    }
+}
+
+impl Invoice {
+    pub fn select_by_identifier(
+        ident: DocIdentifier,
+        conn: &mut SqliteConnection
+    ) -> DynResult<Invoice> {
+        use crate::orm::schema::{invoice};
+
+        let invoices = match ident {
+            DocIdentifier::Num(n) => Invoice::query()
+                .filter(invoice::inv_num.eq(n))
+                .load(conn),
+            DocIdentifier::Month(m) => Invoice::query()
+                .filter(invoice::inv_month.eq(m))
+                .load(conn),
+        }.map_err(|e| format!("Error retrieving invoice from database:\n{e}"))?;
+
+        let [invoice] = <[Invoice; 1]>::try_from(invoices)
+            .map_err(|_| "Identifier failed to uniquely identify an invoice")?;
+
+        Ok(invoice)
     }
 }
