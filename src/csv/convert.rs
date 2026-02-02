@@ -1,8 +1,9 @@
 use serde::Serialize;
+use tabled::Tabled;
 
 use crate::orm::query::TimeWithTickets;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Tabled)]
 pub struct CsvTime {
     pub time_start: String,
     pub time_end: String,

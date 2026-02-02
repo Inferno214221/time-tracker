@@ -156,6 +156,7 @@ pub struct AmendArgs {
     #[arg(long, short)]
     pub delete: bool,
 
+    // --delete should disallow this
     #[arg(value_parser = TimeProperty::from_str, trailing_var_arg = true)]
     pub property: Vec<TimeProperty>,
 }
@@ -205,6 +206,13 @@ impl FromStr for TimeProperty {
 pub struct ListArgs {
     #[command(subcommand)]
     pub entry_type: EntryType,
+
+    #[arg(long, short)]
+    pub all: bool,
+
+    // --all should disallow this 
+    #[arg(global = true, value_parser = DocIdentifier::from_str)]
+    pub ident: Option<DocIdentifier>,
 }
 
 #[derive(Debug, Clone, Subcommand)]
