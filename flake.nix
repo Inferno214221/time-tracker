@@ -31,35 +31,38 @@
           cargo = toolchain;
           rustc = toolchain;
         };
-        buildInputs = with pkgs; [
+        inputsRun = with pkgs; [
           openssl
           sqlite
         ];
-        nativeBuildInputs = with pkgs; [
+        inputsCompile = with pkgs; [
           toolchain
           pkg-config
           gcc
-
+          makeWrapper
+        ] ++ inputsRun;
+        inputsDev = with pkgs; [
           cargo-expand
           cargo-public-api
           rust-analyzer-nightly
           diesel-cli
-
-          makeWrapper
-        ] ++ buildInputs;
-        LD_LIBRARY_PATH = nixpkgs.lib.makeLibraryPath buildInputs;
+        ] ++ inputsCompile;
+        LD_LIBRARY_PATH = nixpkgs.lib.makeLibraryPath inputsRun;
       in with pkgs; rec
       {
         devShells.default = mkShell {
-          inherit nativeBuildInputs LD_LIBRARY_PATH;
+          inherit LD_LIBRARY_PATH;
+          
+          nativeBuildInputs = inputsDev;
 
           DATABASE_URL = "/home/inferno214221/projects/owned/invoice-generator/main.sqlite";
         };
 
-        packages.default = (naersk.buildPackage rec {          
+        packages.default = (naersk.buildPackage {          
           src = ./.;
-
-          inherit buildInputs nativeBuildInputs;
+          
+          buildInputs = inputsRun;
+          nativeBuildInputs = inputsCompile;
         }).overrideAttrs {
           postFixup = ''
             wrapProgram $out/bin/time-tracker --set LD_LIBRARY_PATH ${LD_LIBRARY_PATH}
