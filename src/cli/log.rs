@@ -9,19 +9,19 @@ pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> DynResult<()> {
 
     let date = args.date.unwrap_or_default();
 
-    let act_num = match args.activity {
-        Some(id) => Ok(id),
-        None => InvoiceActivity::query()
-            .order_by(invoice_activity::act_num.desc())
-            .get_result(conn)
-            .map(|a| a.act_num),
-    }.map_err(|e| format!("Error retrieving most recent activity:\n{e}"))?;
+    // let act_num = match args.activity {
+    //     Some(id) => Ok(id),
+    //     None => InvoiceActivity::query()
+    //         .order_by(invoice_activity::act_num.desc())
+    //         .get_result(conn)
+    //         .map(|a| a.act_num),
+    // }.map_err(|e| format!("Error retrieving most recent activity:\n{e}"))?;
 
     let log = LoggedTime {
         time_start: date.and_time(args.time_range.start),
         time_end: date.and_time(args.time_range.end),
         time_desc: args.description,
-        act_num,
+        act_num: args.activity,
     };
 
     let id: i32 = log.insert_into(time::table)
