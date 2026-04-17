@@ -2,20 +2,12 @@ use std::iter;
 
 use diesel::{insert_into, prelude::*};
 
-use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::{InvoiceActivity, TicketTime}}, util::error::DynResult};
+use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::TicketTime}, util::error::DynResult};
 
 pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> DynResult<()> {
-    use crate::orm::schema::{invoice_activity, ticket_time, time};
+    use crate::orm::schema::{ticket_time, time};
 
     let date = args.date.unwrap_or_default();
-
-    // let act_num = match args.activity {
-    //     Some(id) => Ok(id),
-    //     None => InvoiceActivity::query()
-    //         .order_by(invoice_activity::act_num.desc())
-    //         .get_result(conn)
-    //         .map(|a| a.act_num),
-    // }.map_err(|e| format!("Error retrieving most recent activity:\n{e}"))?;
 
     let log = LoggedTime {
         time_start: date.and_time(args.time_range.start),
