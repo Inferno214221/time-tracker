@@ -1,8 +1,8 @@
-use std::{iter, str::FromStr};
+use std::iter;
 
 use diesel::{insert_into, prelude::*};
 
-use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::{InvoiceActivity, TicketTime}, ticket::Ticket}, util::error::DynResult};
+use crate::{cli::args::LogArgs, orm::{insert::LoggedTime, model::{InvoiceActivity, TicketTime}}, util::error::DynResult};
 
 pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> DynResult<()> {
     use crate::orm::schema::{invoice_activity, ticket_time, time};
@@ -29,8 +29,7 @@ pub fn log(conn: &mut SqliteConnection, args: LogArgs) -> DynResult<()> {
         .get_result(conn)
         .map_err(|e| format!("Error inserting time into database:\n{e}"))?;
 
-    let tickets: Vec<TicketTime> = args.tickets.iter()
-        .map(|s| Ticket::from_str(s).unwrap_or_else(|e| panic!("{e}")))
+    let tickets: Vec<TicketTime> = args.tickets.into_iter()
         .zip(iter::repeat(id))
         .map(TicketTime::from)
         .collect();

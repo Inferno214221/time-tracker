@@ -99,9 +99,8 @@ pub struct LogArgs {
 
     pub description: String,
 
-    // TODO: Try changing to Ticket.
-    #[arg(trailing_var_arg = true)]
-    pub tickets: Vec<String>,
+    #[arg(trailing_var_arg = true, value_parser = Ticket::from_str)]
+    pub tickets: Vec<Ticket>,
 }
 
 #[derive(Debug, Clone)]
@@ -153,11 +152,10 @@ pub struct AmendArgs {
     #[arg(long, short)]
     pub time_id: Option<i32>,
 
-    #[arg(long, short)]
+    #[arg(long, short, conflicts_with = "property")]
     pub delete: bool,
 
-    // --delete should disallow this
-    #[arg(value_parser = TimeProperty::from_str, trailing_var_arg = true)]
+    #[arg(required = true, value_parser = TimeProperty::from_str, trailing_var_arg = true)]
     pub property: Vec<TimeProperty>,
 }
 
@@ -207,10 +205,9 @@ pub struct ListArgs {
     #[command(subcommand)]
     pub entry_type: EntryType,
 
-    #[arg(long, short)]
+    #[arg(global = true, long, short, conflicts_with = "ident")]
     pub all: bool,
 
-    // --all should disallow this 
     #[arg(global = true, value_parser = DocIdentifier::from_str)]
     pub ident: Option<DocIdentifier>,
 }
